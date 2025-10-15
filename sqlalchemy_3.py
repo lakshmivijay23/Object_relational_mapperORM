@@ -63,7 +63,7 @@ print("Query 2:", result)
 for r in result:
     print(r.first_name, "|", r.last_name, "|", r.course, "|", r.score)
 
-# count()
+## count()
 """
 The count() method is a synonym to the COUNT we use in the SQL queries. It returns the number of records present in the table
 Syntax: sqlalchemy.orm.Query.count()
@@ -76,3 +76,110 @@ print("Count:", count)
 # COUNt only math students
 math_count = session.query(Students).filter(Students.course=="Math").count()
 print("Math Count:", math_count)
+#select count(*) from students where course="Math";
+
+## distinct()
+"""
+It will return the distinct records based on the provided column names as a reference
+Syntax: sqlalchemy.orm.Query.distinct(*expr)
+
+
+Apply a DISTINCT to the query and return the newly resulting Query.
+"""
+# SELECT DISTINCT(first_name) FROM students;
+result = session.query(Students).with_entities(
+    db.distinct(Students.first_name)).all()
+
+for r in result:
+    print("Distinct First Names:", r)
+
+## delete()
+"""
+The delete() method is used to delete records from a table.
+Syntax: sqlalchemy.orm.Query.delete(synchronize_session='evaluate')
+"""
+# DELETE FROM Students WHERE first_name='John' AND last_name='Doe';
+result=session.query(
+    Students
+).filter(Students.first_name=='John', Students.last_name=='Doe').delete(synchronize_session=False)
+
+print("Rows deleted:", result)
+result=session.query(Students).count()
+print("Count after delete:", result)
+
+## filter()
+"""
+The filter() method works like the WHERE clause in SQL.
+"""
+
+# SELECT * FROM Students WHERE score > 80;
+result=session.query(Students).filter(Students.score>80).all()
+for r in result:
+    print("Score > 80:", r.first_name, r.last_name, r.course, r.score)
+
+# SELECT first_name, last_name, SUM(score)
+# AS total FROM students GROUP BY first_name, last_name;
+result = session.query(Students) \
+    .with_entities(
+        Students.first_name,
+        Students.last_name,
+        db.func.sum(Students.score).label('total')
+).group_by(
+        Students.first_name,
+        Students.last_name
+).all()
+
+# VIEW THE ENTRIES IN THE RESULT
+for r in result:
+    print(r.first_name, r.last_name, "| Score =", r[2])
+
+
+# SELECT * FROM students ORDER BY score DESC, course;
+result = session.query(Students) \
+    .order_by(
+        Students.score.desc(),
+        Students.course
+).all()
+
+# VIEW THE ENTRIES IN THE RESULT
+for r in result:
+    print(r.first_name, r.last_name, r.course, r.score)
+
+
+# join()
+"""
+The join() method is used to combine rows from two or more tables based on a related column between them.
+"""
+
+class Email(Base):
+    __tablename__ = 'Email'
+
+    email = db.Column(db.String(50), primary_key=True)
+    first_name = db.Column(db.String(100))
+
+
+# Check if Email table has data
+if not session.query(Email).first():
+    print("Adding data to the Email table...")
+    email_1 = Email(email='john.doe@example.com', first_name='John')
+    email_2 = Email(email='jane.smith@example.com', first_name='Jane')
+    email_3 = Email(email='alice.johnson@example.com', first_name='Alice')
+    session.add_all([email_1, email_2, email_3])
+    session.commit()
+else:
+    print("Data already exists in the Email table.")
+
+result = session.query(
+    Students.first_name,
+    Students.last_name,
+    Email.email
+).join(
+    Email, Students.first_name == Email.first_name
+)
+
+print("Query:", result)
+print()
+
+for r in result:
+    print(r.email, "|", r.first_name, r.last_name)
+
